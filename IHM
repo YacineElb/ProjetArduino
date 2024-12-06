@@ -1,0 +1,28 @@
+Code IHM Matlab
+
+function AcquisitionIHM
+    % Créer la figure pour l'interface IHM
+    fig = figure('Name', 'Interface de contrôle', 'NumberTitle', 'off', 'Position', [500, 500, 400, 400]);
+
+    % Label et champ de texte pour le nombre d'essais
+    uicontrol('Style', 'text', 'Position', [50, 340, 300, 30], 'String', 'Nombre d''essais :', 'FontSize', 12);
+    numTrialsEdit = uicontrol('Style', 'edit', 'Position', [170, 320, 50, 25], 'String', '10', 'FontSize', 12);
+
+    % Label et champ de texte pour la durée des essais
+    uicontrol('Style', 'text', 'Position', [50, 280, 300, 30], 'String', 'Durée des essais (s) :', 'FontSize', 12);
+    trialDurationEdit = uicontrol('Style', 'edit', 'Position', [170, 260, 50, 25], 'String', '10', 'FontSize', 12);
+
+    % Label et champ de texte pour le chemin d'enregistrement des fichiers
+    uicontrol('Style', 'text', 'Position', [50, 220, 300, 30], 'String', 'Répertoire de sauvegarde des fichiers :', 'FontSize', 12);
+    folderPathEdit = uicontrol('Style', 'edit', 'Position', [50, 180, 300, 30], 'String', 'C:\\Data', 'FontSize', 12);
+
+    % Label et champ de texte pour le préfixe des fichiers
+    uicontrol('Style', 'text', 'Position', [50, 140, 300, 30], 'String', 'Préfixe des fichiers :', 'FontSize', 12);
+    filePrefixEdit = uicontrol('Style', 'edit', 'Position', [50, 100, 300, 30], 'String', 'essai', 'FontSize', 12);
+
+    % Bouton de démarrage
+    startButton = uicontrol('Style', 'pushbutton', 'Position', [100, 40, 200, 40], 'String', 'Démarrer les essais', 'FontSize', 12, 'BackgroundColor', 'g');
+
+    % Callback du bouton de démarrage
+    set(startButton, 'Callback', @(src, event) startTrial(numTrialsEdit, trialDurationEdit, folderPathEdit, filePrefixEdit, fig));
+end
