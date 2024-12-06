@@ -1,0 +1,16 @@
+1er test Oscillation
+
+function period = calculateOscillationPeriod(timestamps, voltageData)
+    
+    [pks, locs] = findpeaks(voltageData, timestamps, 'MinPeakProminence', 0.2);
+    
+   
+    if length(locs) > 1
+       
+        period = mean(diff(locs));
+    else
+        
+        period = NaN;
+        disp('Impossible de détecter plusieurs pics pour estimer la période.');
+    end
+end
