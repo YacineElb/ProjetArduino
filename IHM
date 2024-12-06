@@ -26,3 +26,6 @@ function AcquisitionIHM
     % Callback du bouton de démarrage
     set(startButton, 'Callback', @(src, event) startTrial(numTrialsEdit, trialDurationEdit, folderPathEdit, filePrefixEdit, fig));
 end
+
+Interface trop haut sur l'écran, impossible à déplace.
+Comment régler ça
