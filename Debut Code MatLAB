@@ -1,0 +1,68 @@
+function AcquisitionSimple
+    % Configuration de base
+    totalTrials = 10; % Nombre d'essais
+    trialDuration = 10; % Durée de chaque essai en secondes
+    folderPath = 'C:\Data'; % Répertoire de sauvegarde des fichiers
+    filePrefix = 'essai'; % Préfixe pour les noms de fichiers
+
+    % Vérifier si le répertoire de sauvegarde existe
+    if ~isfolder(folderPath)
+        error('Le répertoire de sauvegarde n''existe pas. Veuillez le créer avant de lancer le programme.');
+    end
+
+    % Définir le port COM de l'Arduino
+    port = "COM7"; % Remplacez par le port approprié
+    baudRate = 9600; % Doit correspondre à la configuration Arduino
+
+    % Ouvre la connexion série
+    s = serialport(port, baudRate);
+
+    % Configurer le timeout (en secondes)
+    s.Timeout = 10;
+
+    % Boucle pour effectuer les essais
+    for trial = 1:totalTrials
+        fprintf('Début de l''essai %d...\n', trial);
+        fprintf('Appuyez sur une touche pour démarrer l''essai.\n');
+        pause; % Attente de l'utilisateur pour commencer chaque essai
+
+        % Initialisation des variables pour l'essai
+        trialRawData = [];
+        trialTimestamps = [];
+
+        % Chronomètre de l'essai
+        startTime = tic;
+        while toc(startTime) < trialDuration
+            % Lire une ligne de données envoyée par Arduino
+            data = readline(s);
+            value = str2double(data); % Convertir la valeur brute en nombre
+
+            % Stocker les données
+            trialRawData = [trialRawData, value];
+            trialTimestamps = [trialTimestamps, toc(startTime)];
+
+            % Affichage en continu dans la console
+            fprintf('Temps: %.3fs, Valeur brute: %d\n', toc(startTime), value);
+
+            % Pause pour limiter la vitesse de lecture
+            pause(0.1);
+        end
+
+        % Enregistrer les données de l'essai dans un fichier .txt
+        fileName = fullfile(folderPath, [filePrefix, '_', num2str(trial), '.txt']);
+        fid = fopen(fileName, 'w');
+        if fid == -1
+            warning('Impossible d''ouvrir le fichier %s pour l''écriture.', fileName);
+        else
+            fprintf(fid, 'Temps (s)\tValeur brute\n');
+            for i = 1:length(trialRawData)
+                fprintf(fid, '%.3f\t%d\n', trialTimestamps(i), trialRawData(i));
+            end
+            fclose(fid);
+            fprintf('Données de l''essai %d enregistrées dans %s\n', trial, fileName);
+        end
+    end
+
+    % Fin du programme
+    disp('Tous les essais sont terminés.');
+end
