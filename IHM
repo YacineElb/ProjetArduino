@@ -29,3 +29,5 @@ end
 
 Interface trop haut sur l'écran, impossible à déplace.
 Comment régler ça
+
+Il suffit de changer le placements en modifiant les coordonées entre les crochets
