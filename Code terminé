@@ -1,0 +1,174 @@
+function AcquisitionPendule
+    % Créer la figure pour l'interface utilisateur
+    fig = figure('Name', 'Interface de contrôle', 'NumberTitle', 'off', 'Position', [550, 200, 500, 400]);
+
+    % Label et champ de texte pour le nombre d'essais
+    uicontrol('Style', 'text', 'Position', [50, 340, 300, 30], 'String', 'Nombre d''essais :', 'FontSize', 12);
+    numTrialsEdit = uicontrol('Style', 'edit', 'Position', [170, 320, 50, 25], 'String', '3', 'FontSize', 12);
+
+    % Label et champ de texte pour la durée des essais
+    uicontrol('Style', 'text', 'Position', [50, 280, 300, 30], 'String', 'Durée des essais (s) :', 'FontSize', 12);
+    trialDurationEdit = uicontrol('Style', 'edit', 'Position', [170, 260, 50, 25], 'String', '5', 'FontSize', 12);
+
+    % Label et champ de texte pour le chemin d'enregistrement des fichiers
+    uicontrol('Style', 'text', 'Position', [50, 220, 300, 30], 'String', 'Répertoire de sauvegarde :', 'FontSize', 12);
+    folderPathEdit = uicontrol('Style', 'edit', 'Position', [50, 200, 300, 30], 'String', 'C:\\Data', 'FontSize', 12);
+
+    % Label et champ de texte pour le préfixe des fichiers
+    uicontrol('Style', 'text', 'Position', [50, 160, 300, 30], 'String', 'Préfixe du fichier :', 'FontSize', 12);
+    filePrefixEdit = uicontrol('Style', 'edit', 'Position', [50, 140, 300, 30], 'String', 'test_', 'FontSize', 12);
+
+    % Bouton de démarrage
+    startButton = uicontrol('Style', 'pushbutton', 'Position', [100, 80, 200, 40], 'String', 'Démarrer les essais', 'FontSize', 12, 'BackgroundColor', 'g');
+
+    % Callback du bouton de démarrage
+    set(startButton, 'Callback', @(src, event) startTrial(numTrialsEdit, trialDurationEdit, folderPathEdit, filePrefixEdit, fig));
+end
+
+function startTrial(numTrialsEdit, trialDurationEdit, folderPathEdit, filePrefixEdit, fig)
+    % Récupérer les paramètres
+    totalTrials = str2double(numTrialsEdit.String);
+    trialDuration = str2double(trialDurationEdit.String);
+    folderPath = folderPathEdit.String;
+    filePrefix = filePrefixEdit.String;
+
+    % Validation des entrées
+    if isempty(totalTrials) || totalTrials <= 0
+        errordlg('Le nombre d''essais doit être un entier positif.', 'Erreur');
+        return;
+    end
+    if isempty(trialDuration) || trialDuration <= 0
+        errordlg('La durée des essais doit être un entier positif.', 'Erreur');
+        return;
+    end
+    if isempty(folderPath) || ~isfolder(folderPath)
+        errordlg('Le chemin spécifié est invalide.', 'Erreur');
+        return;
+    end
+    if isempty(filePrefix)
+        errordlg('Veuillez spécifier un préfixe pour les fichiers.', 'Erreur');
+        return;
+    end
+
+    % Fermer l'IHM
+    close(fig);
+
+    % Définir le port COM de l'Arduino
+    port = "COM7"; % Remplacez par le port de votre Arduino
+    baudRate = 9600; % Correspond à la vitesse de transmission Arduino
+    s = serialport(port, baudRate);
+    s.Timeout = 10; % Timeout de 10 secondes
+
+    % Variables pour stocker les données
+    rawData = {};
+    voltageData = {};
+    timestamps = {};
+
+    % Boucle pour chaque essai
+    for trial = 1:totalTrials
+        disp(['Début de l''essai ', num2str(trial), '...']);
+        disp(['Appuyez sur une touche pour démarrer l''essai ', num2str(trial), '.']);
+        pause;
+
+        startTime = tic;
+        trialRawData = [];
+        trialVoltageData = [];
+        trialTimestamps = [];
+
+        while toc(startTime) < trialDuration
+            data = readline(s);
+            value = str2double(data);
+            voltage = (value / 1023) * 5;
+
+            trialRawData = [trialRawData, value];
+            trialVoltageData = [trialVoltageData, voltage];
+            trialTimestamps = [trialTimestamps, toc(startTime)];
+
+            disp(['Temps: ', num2str(toc(startTime), '%.3f'), 's, Valeur brute: ', num2str(value), ', Tension (V): ', num2str(voltage, '%.3f')]);
+            pause(0.1);
+        end
+
+        rawData{trial} = trialRawData;
+        voltageData{trial} = trialVoltageData;
+        timestamps{trial} = trialTimestamps;
+
+        % Calcul de la période d'oscillation
+        period = calculateOscillationPeriod(trialTimestamps, trialVoltageData);
+        disp(['Période d''oscillation estimée pour l''essai ', num2str(trial), ': ', num2str(period), ' s']);
+
+        % Calcul de la longueur du pendule, ERREUR
+        g = 9.81; 
+        L = (period / (2 * pi))^2 * g; % Longueur du pendule
+
+        % Afficher la longueur du pendule
+        disp(['Longueur du pendule pour l''essai ', num2str(trial), ': ', num2str(L), ' m']);
+
+        % Sauvegarde dans un fichier Excel
+        fileName = fullfile(folderPath, [filePrefix, 'essai_', num2str(trial), '.xlsx']);
+        T = table(trialTimestamps', trialRawData', trialVoltageData', ...
+                  'VariableNames', {'Temps_s', 'Valeur_brute', 'Tension_V'});
+        writetable(T, fileName, 'Sheet', 1);
+
+        additionalData = table(period, L, ...
+                               'VariableNames', {'Periode_s', 'Longueur_m'});
+        writetable(additionalData, fileName, 'Sheet', 2);
+
+        disp(['Données enregistrées dans ', fileName]);
+    end
+
+    % Visualisation des résultats
+    visualizeResults(totalTrials, rawData, voltageData, timestamps);
+    disp('Tous les essais sont terminés.');
+end
+
+function period = calculateOscillationPeriod(timestamps, voltageData)
+    % Détection des pics dans les données de tension
+    [pks, locs] = findpeaks(voltageData(:), timestamps(:), 'MinPeakProminence', 0.2);
+
+    % Vérification de l'existence de plusieurs pics
+    if length(locs) > 1
+        % Calcul de la période en moyenne entre deux pics successifs
+        period = mean(diff(locs));
+    else
+        % Si trop peu de pics sont détectés
+        period = NaN;
+        disp('Impossible de détecter plusieurs pics pour estimer la période.');
+    end
+end
+
+function visualizeResults(totalTrials, rawData, voltageData, timestamps)
+    % Configuration des graphiques
+    if totalTrials > 6
+        nCols = 2;
+        nRows = ceil(totalTrials / 2);
+    else
+        nCols = 1;
+        nRows = totalTrials;
+    end
+
+    % Valeurs brutes
+    figure('Name', 'Valeurs brutes');
+    for trial = 1:totalTrials
+        subplot(nRows, nCols, trial);
+        plot(timestamps{trial}, rawData{trial}, 'b-', 'DisplayName', 'Valeur brute');
+        xlabel('Temps (s)');
+        ylabel('Valeur brute');
+        title(['Essai ', num2str(trial)]);
+        ylim([100 650]);
+        legend;
+        grid on;
+    end
+
+    % Tensions
+    figure('Name', 'Tensions');
+    for trial = 1:totalTrials
+        subplot(nRows, nCols, trial);
+        plot(timestamps{trial}, voltageData{trial}, 'r-', 'DisplayName', 'Tension (V)');
+        xlabel('Temps (s)');
+        ylabel('Tension (V)');
+        title(['Essai ', num2str(trial)]);
+        ylim([0 5]);
+        legend;
+        grid on;
+    end
+end
