@@ -1,0 +1,48 @@
+% Calcul de la période d'oscillation
+period = calculateOscillationPeriod(trialTimestamps, trialVoltageData);
+disp(['Période d''oscillation estimée pour l''essai ', num2str(trial), ': ', num2str(period), ' s']);
+
+% Calcul de la longueur du pendule
+g = 9.81; % Accélération due à la gravité en m/s^2
+L = (period / (2 * pi))^2 * g; % Longueur du pendule
+% Afficher la longueur du pendule
+disp(['Longueur du pendule pour l''essai ', num2str(trial), ': ', num2str(L), ' m']);
+
+% Enregistrement des données avec la période d'oscillation et la longueur du pendule
+fileName = fullfile(folderPath, [filePrefix, 'essai_', num2str(trial), '.txt']);
+fid = fopen(fileName, 'w');
+fprintf(fid, 'Temps (s)\tValeur brute\tTension (V)\n');
+for i = 1:length(trialRawData)
+fprintf(fid, '%.3f\t%d\t%.3f\n', trialTimestamps(i), trialRawData(i), trialVoltageData(i));
+end
+
+% Ajouter la période d'oscillation et la longueur du pendule à la fin du fichier
+fprintf(fid, '\nPériode d''oscillation (s): %.3f\n', period);
+fprintf(fid, 'Longueur du pendule (m): %.3f\n', L);
+fclose(fid);
+disp(['Données enregistrées dans ', fileName]);
+end
+
+% Visualisation des résultats
+visualizeResults(totalTrials, rawData, voltageData, timestamps);
+disp('Tous les essais sont terminés.');
+end
+function period = calculateOscillationPeriod(timestamps, voltageData)
+
+% Détection des pics dans les données de tension
+[pks, locs] = findpeaks(voltageData, timestamps, 'MinPeakProminence', 0.2);
+
+% Vérification de l'existence de plusieurs pics
+if length(locs) > 1
+
+% Calcul de la période en moyenne entre deux pics successifs
+period = mean(diff(locs));
+else
+
+% Si trop peu de pics sont détectés
+period = NaN;
+disp('Impossible de détecter plusieurs pics pour estimer la période.');
+end
+end
+
+
